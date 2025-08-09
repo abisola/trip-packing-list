@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from 'firebase/firestore';
-import { Plus, Check, User, Wifi, WifiOff } from 'lucide-react';
+import { Plus, Check, User, Wifi, WifiOff, Trash2 } from 'lucide-react';
 import './App.css';
 
-// Replace with YOUR Firebase config from the setup steps
-// Your web app's Firebase configuration
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyB9iFIxuUegNbp0PObkVhmutyMMAxno73A",
@@ -55,6 +53,7 @@ const TripPackingList = () => {
   const [newItems, setNewItems] = useState<{[key: string]: string}>({});
   const [newPersonName, setNewPersonName] = useState('');
   const [showNameInput, setShowNameInput] = useState<{[key: number]: boolean}>({});
+  const [confirmDelete, setConfirmDelete] = useState<{itemId: number, category: string, itemName: string} | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
 
@@ -131,6 +130,35 @@ const TripPackingList = () => {
     await syncWithFirebase(updatedCategories);
   };
 
+  const deleteItem = async (category: string, itemId: number) => {
+    const updatedCategories = {
+      ...categories,
+      [category]: categories[category].filter(item => item.id !== itemId)
+    };
+
+    setShowNameInput(prev => ({ ...prev, [itemId]: false }));
+    setConfirmDelete(null);
+    await syncWithFirebase(updatedCategories);
+  };
+
+  const handleDeleteClick = (category: string, item: Item) => {
+    setConfirmDelete({
+      itemId: item.id,
+      category: category,
+      itemName: item.name
+    });
+  };
+
+  const confirmDeleteItem = () => {
+    if (confirmDelete) {
+      deleteItem(confirmDelete.category, confirmDelete.itemId);
+    }
+  };
+
+  const cancelDelete = () => {
+    setConfirmDelete(null);
+  };
+
   const handleCheckboxClick = (category: string, item: Item) => {
     if (item.completed) {
       toggleItem(category, item.id, null);
@@ -194,6 +222,13 @@ const TripPackingList = () => {
                         <span>{item.completedBy}</span>
                       </div>
                     )}
+                    <button
+                      onClick={() => handleDeleteClick(categoryName, item)}
+                      className="delete-button"
+                      title="Delete item"
+                    >
+                      <Trash2 className="delete-icon" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -234,6 +269,29 @@ const TripPackingList = () => {
                   </div>
                 ) : null;
               })}
+
+              {/* Delete confirmation */}
+              {confirmDelete && confirmDelete.category === categoryName && (
+                <div className="confirm-delete-container">
+                  <p className="confirm-delete-text">
+                    Are you sure you want to delete "<span className="confirm-delete-item-name">{confirmDelete.itemName}</span>"?
+                  </p>
+                  <div className="confirm-delete-buttons">
+                    <button
+                      onClick={confirmDeleteItem}
+                      className="button button-danger"
+                    >
+                      Delete
+                    </button>
+                    <button
+                      onClick={cancelDelete}
+                      className="button button-secondary"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Add new item */}
               <div className="add-item-form">
